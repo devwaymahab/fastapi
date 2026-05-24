@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FastAPI WebSocket Chat</title>
+
+    <style>
+
+        body {
+            font-family: Arial;
+            background: #111;
+            color: white;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #00ff88;
+        }
+
+        #messages {
+            border: 1px solid #444;
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            background: #222;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        input {
+            padding: 10px;
+            width: 70%;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #00ff88;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>Realtime Chat </h1>
+
+    <input
+        type="text"
+        id="username"
+        placeholder="Enter username"
+    />
+    <button onclick="connectSocket()">
+        Connect
+    </button>
+
+    <br><br>
+    <div
+        id="status"
+        style="
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        "
+    >
+
+        <div
+            id="statusDot"
+            style="
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: red;
+            "
+        ></div>
+
+        <span id="statusText">
+            Disconnected
+        </span>
+
+    </div>
+    <div id="messages"></div>
+
+    <input
+        type="text"
+        id="messageInput"
+        placeholder="Type message..."
+    />
+
+    <button onclick="sendMessage()">
+        Send
+    </button>
+
+    <script>
+
+    let ws;
+
+    let currentUser = "";
+
+    function connectSocket() {
+
+        if (ws) {
+            ws.close();
+        }
+        currentUser =
+            document.getElementById("username").value;
+
+        ws = new WebSocket(
+            `ws://localhost:8000/ws/${currentUser}`
+        );
+ 
+        ws.onopen = () => {
+
+            document.getElementById(
+                "statusDot"
+            ).style.background = "#00ff88";
+
+            document.getElementById(
+                "statusText"
+            ).innerText = "Connected";
+        };
+
+        ws.onclose = () => {
+
+            document.getElementById(
+                "statusDot"
+            ).style.background = "red";
+
+            document.getElementById(
+                "statusText"
+            ).innerText = "Disconnected";
+        };
+
+        ws.onmessage = (event) => {
+
+            const messages =
+                document.getElementById("messages");
+
+            const messageData = JSON.parse(event.data);
+
+            const sender =
+                messageData.sender;
+
+            const text =
+                messageData.message;
+
+            const isMe =
+                sender === currentUser;
+
+            messages.innerHTML += `
+
+                <div style="
+                    display: flex;
+                    justify-content:
+                        ${isMe ? "flex-end" : "flex-start"};
+                    margin-bottom: 10px;
+                ">
+
+                    <div style="
+                        background:
+                            ${isMe ? "#005c4b" : "#202c33"};
+                        color: white;
+                        padding: 10px;
+                        border-radius: 10px;
+                        max-width: 250px;
+                    ">
+
+                        <div style="
+                            font-size: 12px;
+                            opacity: 0.7;
+                            margin-bottom: 5px;
+                        ">
+                            ${sender}
+                        </div>
+
+                        <div>
+                            ${text}
+                        </div>
+
+                        <div style="
+                            display: flex;
+                            justify-content: flex-end;
+                            align-items: center;
+                            gap: 5px;
+                            font-size: 11px;
+                            margin-top: 5px;
+                            opacity: 0.7;
+                        ">
+
+                            <span>
+                                ${new Date().toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </span>
+
+                            <span>
+                                ✓✓
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            `;
+
+            messages.scrollTop =
+                messages.scrollHeight;
+        };
+    }
+
+
+
+    function sendMessage() {
+
+        const input =
+            document.getElementById(
+                "messageInput"
+            );
+
+        const message =
+            input.value.trim();
+
+        // Prevent empty messages
+        if (!message) {
+            return;
+        }
+
+        ws.send(message);
+
+        input.value = "";
+    }
+
+</script>
+
+</body>
+</html>

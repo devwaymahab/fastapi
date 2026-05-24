@@ -12,6 +12,9 @@ from services.auth_service import hash_password, verify_password, create_access_
 
 from utils.dependencies import get_current_user, admin_only
 
+from fastapi import BackgroundTasks
+from utils.utils import send_email
+
 router = APIRouter()
 
 # =========================
@@ -49,7 +52,11 @@ def get_users(db: Session = Depends(get_db)):
 
 
 @router.post("/users")
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user: UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
 
     new_user = Users(
         name=user.name,
@@ -63,6 +70,9 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
 
     db.refresh(new_user)
+
+    # Time-Consuming Task:Send Email in Background
+    background_tasks.add_task(send_email, user.email)
 
     return new_user
 
@@ -113,4 +123,37 @@ def get_profile(current_user=Depends(get_current_user)):
 @router.get("/admin")
 def admin_dashboard(current_user=Depends(admin_only)):
 
-    return {"message": "Welcome Admin 🚀", "user": current_user}
+    return {"message": "Welcome Admin ", "user": current_user}
+
+
+from fastapi import WebSocket, WebSocketDisconnect
+import json
+
+connections = []
+
+
+@router.websocket("/ws/{username}")
+async def websocket_endpoint(websocket: WebSocket, username: str):
+    await websocket.accept()
+
+    user_connection = {"user": username, "websocket": websocket}
+
+    connections.append(user_connection)
+
+    try:
+
+        while True:
+
+            data = await websocket.receive_text()
+
+            for connection in connections:
+
+                await connection["websocket"].send_text(
+                    json.dumps({"sender": username, "message": data})
+                )
+
+    except WebSocketDisconnect:
+
+        connections.remove(user_connection)
+
+        print(f"{username} disconnected")

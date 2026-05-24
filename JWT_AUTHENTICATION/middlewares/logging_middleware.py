@@ -1,18 +1,17 @@
 import time
-
-from fastapi import Request
+from urllib.request import Request
 
 
 async def log_requests(request: Request, call_next):
 
-    start = time.time()
+    start_time = time.time()
 
     print("REQUEST PATH:", request.url.path)
 
     response = await call_next(request)
 
-    process_time = time.time() - start
+    end_time = time.time()
 
-    print("TIME TAKEN:", process_time)
-
+    time_taken = end_time - start_time
+    print("TIME TAKEN:", time_taken, "seconds")
     return response
